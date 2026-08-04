@@ -2,9 +2,20 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .db import get_engine
+from .db import PROPERTY_TYPES, get_engine
 
-FEATURE_COLUMNS = ["area_m2", "floor", "age", "lat", "lng", "base_rate", "deal_year", "deal_month"]
+PROPERTY_TYPE_COLUMNS = [f"is_{t}" for t in PROPERTY_TYPES]
+FEATURE_COLUMNS = [
+    "area_m2",
+    "floor",
+    "age",
+    "lat",
+    "lng",
+    "base_rate",
+    "deal_year",
+    "deal_month",
+    *PROPERTY_TYPE_COLUMNS,
+]
 TARGET_COLUMN = "price_krw"
 
 
@@ -32,4 +43,7 @@ def build_feature_frame(engine=None) -> pd.DataFrame:
 
     df["age"] = df["deal_year"] - df["build_year"]
 
-    return df[["id", "address", *FEATURE_COLUMNS, TARGET_COLUMN]]
+    for t, col in zip(PROPERTY_TYPES, PROPERTY_TYPE_COLUMNS):
+        df[col] = (df["property_type"] == t).astype(int)
+
+    return df[["id", "address", "property_type", *FEATURE_COLUMNS, TARGET_COLUMN]]

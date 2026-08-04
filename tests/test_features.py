@@ -8,9 +8,10 @@ def _seed(engine, *, with_geo=True, with_rate=True):
     with get_session(engine) as db:
         db.add(
             Trade(
+                property_type="apt",
                 region_code="11110",
                 deal_date=date(2024, 1, 15),
-                apt_name="테스트아파트",
+                building_name="테스트아파트",
                 jibun="123-4",
                 area_m2=84.93,
                 floor=10,
@@ -41,6 +42,10 @@ def test_build_feature_frame_joins_all_sources(db_engine):
     assert row[TARGET_COLUMN] == 2_500_000_000
     for col in FEATURE_COLUMNS:
         assert col in df.columns
+    assert row["is_apt"] == 1
+    assert row["is_rh"] == 0
+    assert row["is_sh"] == 0
+    assert row["is_offi"] == 0
 
 
 def test_build_feature_frame_handles_missing_geo_and_rate(db_engine):

@@ -4,7 +4,8 @@ import pandas as pd
 import pytest
 
 from avm import model as model_module
-from avm.features import FEATURE_COLUMNS, TARGET_COLUMN
+from avm.db import PROPERTY_TYPES
+from avm.features import FEATURE_COLUMNS, PROPERTY_TYPE_COLUMNS, TARGET_COLUMN
 from avm.model import load_model, predict_one, save_model, train
 
 
@@ -26,19 +27,21 @@ def _make_synthetic_df(n=60, with_missing=True) -> pd.DataFrame:
         if with_missing and i % 15 == 0:
             base_rate = None
 
-        rows.append(
-            {
-                "area_m2": area,
-                "floor": floor,
-                "age": age,
-                "lat": lat,
-                "lng": lng,
-                "base_rate": base_rate,
-                "deal_year": 2024,
-                "deal_month": (i % 12) + 1,
-                TARGET_COLUMN: price,
-            }
-        )
+        row = {
+            "area_m2": area,
+            "floor": floor,
+            "age": age,
+            "lat": lat,
+            "lng": lng,
+            "base_rate": base_rate,
+            "deal_year": 2024,
+            "deal_month": (i % 12) + 1,
+            TARGET_COLUMN: price,
+        }
+        chosen_type = PROPERTY_TYPES[i % len(PROPERTY_TYPES)]
+        for t, col in zip(PROPERTY_TYPES, PROPERTY_TYPE_COLUMNS):
+            row[col] = int(t == chosen_type)
+        rows.append(row)
     return pd.DataFrame(rows)
 
 

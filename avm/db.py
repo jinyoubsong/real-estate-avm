@@ -18,21 +18,31 @@ class Base(DeclarativeBase):
     pass
 
 
+PROPERTY_TYPES = ("apt", "rh", "sh", "offi")
+PROPERTY_TYPE_LABELS = {
+    "apt": "아파트",
+    "rh": "연립다세대",
+    "sh": "단독/다가구",
+    "offi": "오피스텔",
+}
+
+
 class Trade(Base):
-    """국토교통부 실거래가 원자료 한 건 (아파트 매매 기준)."""
+    """국토교통부 실거래가 원자료 한 건 (여러 부동산 유형 공용)."""
 
     __tablename__ = "trades"
     __table_args__ = (
         UniqueConstraint(
-            "region_code", "deal_date", "apt_name", "jibun", "area_m2", "price_krw",
+            "property_type", "region_code", "deal_date", "building_name", "jibun", "area_m2", "price_krw",
             name="uq_trade_natural_key",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    property_type: Mapped[str] = mapped_column(String(10), default="apt")
     region_code: Mapped[str] = mapped_column(String(10))
     deal_date: Mapped[date] = mapped_column(Date)
-    apt_name: Mapped[str] = mapped_column(String(200))
+    building_name: Mapped[str] = mapped_column(String(200))
     jibun: Mapped[str] = mapped_column(String(100))
     area_m2: Mapped[float] = mapped_column(Float)
     floor: Mapped[int] = mapped_column(Integer)

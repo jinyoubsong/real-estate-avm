@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>추정 결과 — AVM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { font-family: sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #222; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  a.back { display: inline-block; margin-bottom: 20px; color: #1a1a2e; font-size: 13px; }
+  .error-box {
+    background: #fdecea; border: 1px solid #f5c2c0; color: #8a2822;
+    padding: 14px; border-radius: 6px; font-size: 14px;
+  }
+  .price-box {
+    background: #f4f7ff; border: 1px solid #d8e2ff; border-radius: 8px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .price-box .amount { font-size: 28px; font-weight: bold; color: #1a1a2e; }
+  .price-box .meta { font-size: 13px; color: #555; margin-top: 6px; }
+  .disclaimer { font-size: 12px; color: #999; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+  th { color: #666; font-weight: normal; }
+  h2 { font-size: 15px; margin-top: 28px; }
+</style>
+</head>
+<body>
+<a class="back" href="/">&larr; 다시 입력하기</a>
+
+{% if error %}
+  <div class="error-box">{{ error }}</div>
+{% else %}
+  <div class="price-box">
+    <div class="amount">{{ "{:,.0f}".format(price) }} 원</div>
+    <div class="meta">
+      {{ property_type_label }} · {{ address }} · 전용/건물면적 {{ area_m2 }}㎡ · {{ floor }}층 · {{ build_year }}년 준공
+      {% if lat and lng %} · 좌표 {{ "%.5f"|format(lat) }}, {{ "%.5f"|format(lng) }}{% endif %}
+    </div>
+    <div class="disclaimer">모델은 학습에 쓰인 실거래 데이터 범위 안에서만 신뢰할 수 있습니다. 참고용 추정치이며 공식 감정평가를 대체하지 않습니다.</div>
+  </div>
+
+  <h2>인근 실거래 비교 사례 ({{ comparables|length }}건, 반경 3km 이내 가까운 순)</h2>
+  {% if comparables %}
+  <table>
+    <thead>
+      <tr><th>거리</th><th>유형</th><th>건물명</th><th>주소</th><th>거래일</th><th>면적</th><th>층</th><th>거래금액</th></tr>
+    </thead>
+    <tbody>
+      {% for c in comparables %}
+      <tr>
+        <td>{{ c.distance_km }}km</td>
+        <td>{{ c.property_type_label }}</td>
+        <td>{{ c.building_name }}</td>
+        <td>{{ c.address }}</td>
+        <td>{{ c.deal_date }}</td>
+        <td>{{ c.area_m2 }}㎡</td>
+        <td>{{ c.floor }}</td>
+        <td>{{ "{:,.0f}".format(c.price_krw) }}원</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#888; font-size: 13px;">반경 3km 이내에 비교할 수집된 실거래 사례가 없습니다.</p>
+  {% endif %}
+{% endif %}
+</body>
+</html>

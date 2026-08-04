@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<response>
+    <header>
+        <resultCode>000</resultCode>
+        <resultMsg>OK</resultMsg>
+    </header>
+    <body>
+        <items>
+            <item>
+                <mhouseNm>행복다세대</mhouseNm>
+                <buildYear>2015</buildYear>
+                <dealAmount>   35,000</dealAmount>
+                <dealDay>5</dealDay>
+                <dealMonth>3</dealMonth>
+                <dealYear>2024</dealYear>
+                <estateAgentSggNm>서울 종로구</estateAgentSggNm>
+                <excluUseAr>45.2</excluUseAr>
+                <floor>2</floor>
+                <jibun>12-3</jibun>
+                <sggCd>11110</sggCd>
+                <umdNm>창신동</umdNm>
+            </item>
+        </items>
+        <numOfRows>10</numOfRows>
+        <pageNo>1</pageNo>
+        <totalCount>1</totalCount>
+    </body>
+</response>

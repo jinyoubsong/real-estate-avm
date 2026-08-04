@@ -4,7 +4,7 @@ import json
 
 from sqlalchemy import text
 
-from .db import get_engine
+from .db import PROPERTY_TYPE_LABELS, get_engine
 
 _HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ko">
@@ -85,7 +85,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
   }}));
 
   function detailHtml(p) {{
-    return `<div class="name">${{p.apt_name}}</div>` +
+    return `<div class="name">${{p.building_name}} <span style="font-weight:normal;color:#666;">[${{p.property_type_label}}]</span></div>` +
       `${{p.address}}<br/>` +
       `거래일: ${{p.deal_date}}<br/>` +
       `전용면적: ${{p.area_m2}}m²  ${{p.floor}}층<br/>` +
@@ -169,7 +169,7 @@ def build_map_html(engine=None) -> str:
 
     query = text(
         """
-        SELECT t.apt_name, t.address, t.deal_date, t.area_m2, t.floor, t.price_krw,
+        SELECT t.property_type, t.building_name, t.address, t.deal_date, t.area_m2, t.floor, t.price_krw,
                g.lat, g.lng
         FROM trades t
         JOIN geocache g ON g.address = t.address
@@ -180,7 +180,8 @@ def build_map_html(engine=None) -> str:
 
     points = [
         {
-            "apt_name": row["apt_name"],
+            "building_name": row["building_name"],
+            "property_type_label": PROPERTY_TYPE_LABELS.get(row["property_type"], row["property_type"]),
             "address": row["address"],
             "deal_date": str(row["deal_date"]),
             "area_m2": row["area_m2"],

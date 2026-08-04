@@ -85,9 +85,10 @@ def main() -> None:
 
             db.add(
                 Trade(
+                    property_type="apt",
                     region_code="00000",
                     deal_date=date(year, month, day),
-                    apt_name=f"{neighborhood['name']}아파트",
+                    building_name=f"{neighborhood['name']}아파트",
                     jibun=address.split(" ")[-1],
                     area_m2=area,
                     floor=floor,

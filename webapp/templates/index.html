@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>AVM 가격산정 추계</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { font-family: sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; color: #222; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: #666; font-size: 13px; margin-top: 0; margin-bottom: 24px; }
+  form { display: flex; flex-direction: column; gap: 14px; }
+  label { font-size: 13px; font-weight: bold; display: block; margin-bottom: 4px; }
+  input, select {
+    width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 14px;
+    border: 1px solid #ccc; border-radius: 6px;
+  }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  button {
+    margin-top: 8px; padding: 10px; font-size: 14px; font-weight: bold;
+    background: #1a1a2e; color: white; border: none; border-radius: 6px; cursor: pointer;
+  }
+  button:hover { background: #0f0f1e; }
+  .hint { color: #888; font-size: 12px; margin-top: -8px; }
+</style>
+</head>
+<body>
+<h1>부동산 가격산정 추계</h1>
+<p class="sub">위치와 기본 스펙을 입력하면 학습된 모델로 추정가를 계산합니다. (지번주소는 VWorld로 자동 좌표 조회)</p>
+
+<form action="/estimate" method="post">
+  <div>
+    <label for="property_type">부동산 유형</label>
+    <select id="property_type" name="property_type">
+      {% for t in property_types %}
+      <option value="{{ t }}">{{ labels[t] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="row">
+    <div>
+      <label for="region_name">시도/시군구</label>
+      <input id="region_name" name="region_name" type="text" placeholder="서울특별시 종로구" />
+    </div>
+    <div>
+      <label for="dong">동</label>
+      <input id="dong" name="dong" type="text" placeholder="숭인동" />
+    </div>
+    <div>
+      <label for="jibun">지번</label>
+      <input id="jibun" name="jibun" type="text" placeholder="766" />
+    </div>
+  </div>
+  <p class="hint">세 항목을 조합해 주소를 만들어 좌표를 조회합니다. 최소 한 항목은 입력해 주세요.</p>
+
+  <div class="row">
+    <div>
+      <label for="area_m2">전용/건물면적(㎡)</label>
+      <input id="area_m2" name="area_m2" type="number" step="0.01" required placeholder="84.93" />
+    </div>
+    <div>
+      <label for="floor">층</label>
+      <input id="floor" name="floor" type="number" placeholder="10" />
+    </div>
+    <div>
+      <label for="build_year">건축년도</label>
+      <input id="build_year" name="build_year" type="number" required placeholder="2010" />
+    </div>
+  </div>
+
+  <button type="submit">추정가 계산</button>
+</form>
+</body>
+</html>

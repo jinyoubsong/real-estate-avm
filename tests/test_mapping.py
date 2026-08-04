@@ -8,9 +8,10 @@ def _seed(engine):
     with get_session(engine) as db:
         db.add(
             Trade(
+                property_type="apt",
                 region_code="11110",
                 deal_date=date(2024, 1, 15),
-                apt_name="테스트아파트",
+                building_name="테스트아파트",
                 jibun="123-4",
                 area_m2=84.93,
                 floor=10,

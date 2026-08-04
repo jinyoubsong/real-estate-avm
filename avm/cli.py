@@ -6,7 +6,7 @@ import sys
 
 from .collectors.base import MissingApiKeyError
 from .collectors.ecos_rates import collect_rates
-from .collectors.molit_trades import collect_trades
+from .collectors.molit_generic import TYPE_CONFIGS, collect_trades
 from .collectors.vworld_geocode import collect_geocodes
 from .db import init_db
 from .features import build_feature_frame
@@ -16,12 +16,14 @@ from .model import load_model, predict_one, save_model, train
 
 def cmd_collect_trades(args: argparse.Namespace) -> None:
     saved = collect_trades(
+        property_type=args.type,
         region_code=args.region,
         start_ymd=args.start,
         end_ymd=args.end,
         region_name=args.region_name or "",
     )
-    print(f"실거래가 {saved}건 저장 완료.")
+    label = TYPE_CONFIGS[args.type].label
+    print(f"{label} 실거래가 {saved}건 저장 완료.")
 
 
 def cmd_collect_geocode(_: argparse.Namespace) -> None:
@@ -74,7 +76,13 @@ def build_parser() -> argparse.ArgumentParser:
     collect = sub.add_parser("collect", help="데이터 수집")
     collect_sub = collect.add_subparsers(dest="source", required=True)
 
-    p_trades = collect_sub.add_parser("trades", help="아파트매매 실거래가 수집")
+    p_trades = collect_sub.add_parser("trades", help="매매 실거래가 수집")
+    p_trades.add_argument(
+        "--type",
+        choices=list(TYPE_CONFIGS),
+        default="apt",
+        help="부동산 유형 (apt=아파트, rh=연립다세대, sh=단독/다가구, offi=오피스텔). 기본값 apt",
+    )
     p_trades.add_argument("--region", required=True, help="법정동코드 5자리 (예: 11110)")
     p_trades.add_argument(
         "--region-name",

@@ -16,7 +16,8 @@ def test_parse_trades_xml_basic():
     assert len(trades) == 2
     first = trades[0]
     assert first["deal_date"] == date(2024, 1, 19)
-    assert first["apt_name"] == "종로청계힐스테이트"
+    assert first["property_type"] == "apt"
+    assert first["building_name"] == "종로청계힐스테이트"
     assert first["area_m2"] == 84.9478
     assert first["floor"] == 13
     assert first["build_year"] == 2009

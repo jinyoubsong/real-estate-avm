@@ -6,5 +6,9 @@
   "lng": 126.978,
   "base_rate": 3.2,
   "deal_year": 2024,
-  "deal_month": 6
+  "deal_month": 6,
+  "is_apt": 1,
+  "is_rh": 0,
+  "is_sh": 0,
+  "is_offi": 0
 }
