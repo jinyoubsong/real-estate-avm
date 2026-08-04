@@ -1,0 +1,7 @@
+{
+  "response": {
+    "service": {"name": "address"},
+    "status": "NOT_FOUND",
+    "input": {"type": "PARCEL", "address": "존재하지않는주소 0-0"}
+  }
+}

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<response>
+    <header>
+        <resultCode>000</resultCode>
+        <resultMsg>OK</resultMsg>
+    </header>
+    <body>
+        <items>
+            <item>
+                <aptDong>105</aptDong>
+                <aptNm>종로청계힐스테이트</aptNm>
+                <buildYear>2009</buildYear>
+                <buyerGbn>개인</buyerGbn>
+                <cdealDay> </cdealDay>
+                <cdealType> </cdealType>
+                <dealAmount>   101,300</dealAmount>
+                <dealDay>19</dealDay>
+                <dealMonth>1</dealMonth>
+                <dealYear>2024</dealYear>
+                <dealingGbn>중개거래</dealingGbn>
+                <estateAgentSggNm>서울 종로구</estateAgentSggNm>
+                <excluUseAr>84.9478</excluUseAr>
+                <floor>13</floor>
+                <jibun>766</jibun>
+                <landLeaseholdGbn>N</landLeaseholdGbn>
+                <rgstDate>24.04.30</rgstDate>
+                <sggCd>11110</sggCd>
+                <slerGbn>개인</slerGbn>
+                <umdNm>숭인동</umdNm>
+            </item>
+            <item>
+                <aptDong>116</aptDong>
+                <aptNm>인왕산아이파크</aptNm>
+                <buildYear>2008</buildYear>
+                <buyerGbn>개인</buyerGbn>
+                <cdealDay> </cdealDay>
+                <cdealType> </cdealType>
+                <dealAmount>   101,000</dealAmount>
+                <dealDay>29</dealDay>
+                <dealMonth>1</dealMonth>
+                <dealYear>2024</dealYear>
+                <dealingGbn>중개거래</dealingGbn>
+                <estateAgentSggNm>서울 종로구</estateAgentSggNm>
+                <excluUseAr>59.993</excluUseAr>
+                <floor>11</floor>
+                <jibun>60</jibun>
+                <landLeaseholdGbn>N</landLeaseholdGbn>
+                <rgstDate>24.03.20</rgstDate>
+                <sggCd>11110</sggCd>
+                <slerGbn>개인</slerGbn>
+                <umdNm>무악동</umdNm>
+            </item>
+        </items>
+        <numOfRows>10</numOfRows>
+        <pageNo>1</pageNo>
+        <totalCount>2</totalCount>
+    </body>
+</response>

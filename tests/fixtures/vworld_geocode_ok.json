@@ -1,0 +1,11 @@
+{
+  "response": {
+    "service": {"name": "address"},
+    "status": "OK",
+    "input": {"type": "PARCEL", "address": "서울특별시 종로구 종로동 123-4"},
+    "refined": {"text": "서울특별시 종로구 종로동 123-4"},
+    "result": {
+      "point": {"x": "126.978000", "y": "37.566500"}
+    }
+  }
+}
