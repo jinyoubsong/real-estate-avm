@@ -10,6 +10,7 @@ from .collectors.molit_trades import collect_trades
 from .collectors.vworld_geocode import collect_geocodes
 from .db import init_db
 from .features import build_feature_frame
+from .mapping import build_map_html
 from .model import load_model, predict_one, save_model, train
 
 
@@ -51,6 +52,13 @@ def cmd_train(args: argparse.Namespace) -> None:
     print(f"저장 위치: {path}")
 
 
+def cmd_map(args: argparse.Namespace) -> None:
+    html = build_map_html()
+    with open(args.out, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"지도 저장 완료 -> {args.out}")
+
+
 def cmd_predict(args: argparse.Namespace) -> None:
     with open(args.input, encoding="utf-8") as f:
         features = json.load(f)
@@ -90,6 +98,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_build = features_sub.add_parser("build", help="피처 테이블 생성 후 CSV로 저장")
     p_build.add_argument("--out", default="data/features.csv")
     p_build.set_defaults(func=cmd_features_build)
+
+    p_map = sub.add_parser("map", help="지오코딩된 거래를 지도 HTML로 내보내기")
+    p_map.add_argument("--out", default="data/map.html")
+    p_map.set_defaults(func=cmd_map)
 
     p_train = sub.add_parser("train", help="모델 학습")
     p_train.add_argument("--name", default="avm_model")
