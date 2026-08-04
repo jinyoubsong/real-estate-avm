@@ -28,12 +28,15 @@ def test_build_map_html_includes_points(db_engine):
     html = build_map_html(db_engine)
 
     assert "<!DOCTYPE html>" in html
-    assert "거래 1건 표시" in html
     assert "테스트아파트" in html
     assert "37.5665" in html
+    # 우측 패널(현재 화면 매물 목록)과 근접 호버 툴팁 로직이 포함되어야 한다
+    assert "sidebar-list" in html
+    assert "map.on('moveend'" in html
+    assert "HOVER_RADIUS_PX" in html
 
 
 def test_build_map_html_handles_empty_db(db_engine):
     html = build_map_html(db_engine)
-    assert "거래 0건 표시" in html
+    assert "[]" in html  # 빈 points 배열
     assert "37.5665" in html  # 서울시청 기본 중심좌표
