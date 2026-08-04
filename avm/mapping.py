@@ -129,14 +129,31 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 
   function refreshSidebar() {{
     const bounds = map.getBounds();
-    const visible = markers
-      .filter(({{marker}}) => bounds.contains(marker.getLatLng()))
-      .map(({{point}}) => point)
-      .sort((a, b) => b.deal_date.localeCompare(a.deal_date));
+    const visibleIdx = markers
+      .map((m, i) => i)
+      .filter(i => bounds.contains(markers[i].marker.getLatLng()))
+      .sort((a, b) => markers[b].point.deal_date.localeCompare(markers[a].point.deal_date));
 
-    headerEl.innerHTML = `<b>화면에 보이는 매물 ${{visible.length}}건</b><br/>지도를 움직이면 목록이 갱신됩니다.`;
-    listEl.innerHTML = visible.map(p => `<div class="sidebar-item">${{detailHtml(p)}}</div>`).join('');
+    headerEl.innerHTML = `<b>화면에 보이는 매물 ${{visibleIdx.length}}건</b><br/>목록을 클릭하면 지도에서 위치를 보여줍니다.`;
+    listEl.innerHTML = visibleIdx
+      .map(i => `<div class="sidebar-item" data-idx="${{i}}">${{detailHtml(markers[i].point)}}</div>`)
+      .join('');
   }}
+
+  function flashMarker(marker) {{
+    const orig = marker.options.radius;
+    marker.setStyle({{ radius: orig + 6 }});
+    marker.bringToFront();
+    setTimeout(() => marker.setStyle({{ radius: orig }}), 1400);
+  }}
+
+  listEl.addEventListener('click', (e) => {{
+    const item = e.target.closest('.sidebar-item');
+    if (!item) return;
+    const {{ marker }} = markers[Number(item.dataset.idx)];
+    map.setView(marker.getLatLng(), Math.max(map.getZoom(), 17), {{ animate: true }});
+    flashMarker(marker);
+  }});
 
   map.on('moveend', refreshSidebar);
   refreshSidebar();

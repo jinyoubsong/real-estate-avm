@@ -34,6 +34,9 @@ def test_build_map_html_includes_points(db_engine):
     assert "sidebar-list" in html
     assert "map.on('moveend'" in html
     assert "HOVER_RADIUS_PX" in html
+    # 목록 클릭 시 해당 마커로 이동하는 로직이 포함되어야 한다
+    assert "data-idx=" in html
+    assert "flashMarker" in html
 
 
 def test_build_map_html_handles_empty_db(db_engine):
