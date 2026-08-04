@@ -53,13 +53,14 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
       fillColor: colorFor(p.price_per_m2),
       fillOpacity: 0.8,
     }}).addTo(map);
-    marker.bindPopup(
+    marker.bindTooltip(
       `<b>${{p.apt_name}}</b><br/>` +
       `${{p.address}}<br/>` +
       `거래일: ${{p.deal_date}}<br/>` +
       `전용면적: ${{p.area_m2}}m²  ${{p.floor}}층<br/>` +
       `거래금액: ${{p.price_krw.toLocaleString()}}원<br/>` +
-      `평당(㎡당) 단가: ${{Math.round(p.price_per_m2).toLocaleString()}}원/m²`
+      `평당(㎡당) 단가: ${{Math.round(p.price_per_m2).toLocaleString()}}원/m²`,
+      {{ sticky: true, direction: 'top', offset: [0, -6] }}
     );
   }});
 </script>
