@@ -119,6 +119,9 @@ def test_estimate_success_shows_price_and_comparables(tmp_path, monkeypatch):
     assert "좌표를 찾지 못했습니다" not in resp.text
     assert "원" in resp.text
     assert "종로청계힐스테이트" in resp.text  # 인근 비교 사례에 표시
+    assert "산출근거" in resp.text
+    assert "학습 데이터: 실거래" in resp.text
+    assert "MAPE" in resp.text
 
 
 def test_estimate_with_manual_specs_skips_building_register_lookup(tmp_path, monkeypatch):
@@ -291,3 +294,35 @@ def test_api_units_filters_exclusive_area_and_dong(tmp_path, monkeypatch):
     assert resp.status_code == 200
     data = resp.json()
     assert data["units"] == [{"ho_name": "102", "area_m2": 59.9426, "floor": 1}]
+
+
+def test_build_estimation_basis_none_when_no_report():
+    import webapp.main as webapp_main
+
+    assert webapp_main.build_estimation_basis(None) is None
+
+
+def test_build_estimation_basis_summarizes_report():
+    import webapp.main as webapp_main
+
+    report = {
+        "best_name": "hist_gradient_boosting",
+        "all_metrics": {
+            "hist_gradient_boosting": {"mae": 1.0, "rmse": 2.0, "mape": 0.1794},
+            "linear_baseline": {"mae": 3.0, "rmse": 4.0, "mape": 0.55},
+        },
+        "n_train": 3729,
+        "n_test": 933,
+        "feature_columns": ["area_m2", "floor", "age", "lat", "lng", "deal_year", "deal_month", "is_apt", "is_rh"],
+        "dropped_columns": ["base_rate"],
+    }
+
+    basis = webapp_main.build_estimation_basis(report)
+
+    assert basis["model_label"] == "그래디언트부스팅(HistGradientBoosting)"
+    assert basis["n_samples"] == 4662
+    assert basis["mape_pct"] == 17.9
+    assert "위치(좌표)" in basis["used_features"]
+    assert basis["used_features"].count("위치(좌표)") == 1  # lat/lng 중복 제거
+    assert "부동산 유형" in basis["used_features"]
+    assert basis["dropped_features"] == ["기준금리"]

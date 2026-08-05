@@ -6,7 +6,7 @@ import pytest
 from avm import model as model_module
 from avm.db import PROPERTY_TYPES
 from avm.features import FEATURE_COLUMNS, PROPERTY_TYPE_COLUMNS, TARGET_COLUMN
-from avm.model import load_model, predict_one, save_model, train
+from avm.model import load_model, load_report, predict_one, save_model, train
 
 
 def _make_synthetic_df(n=60, with_missing=True) -> pd.DataFrame:
@@ -92,3 +92,13 @@ def test_save_and_load_model_roundtrip(tmp_path, monkeypatch):
     loaded = load_model(name="test_model")
     price = predict_one(loaded, {col: 50.0 for col in FEATURE_COLUMNS})
     assert isinstance(price, float)
+
+    report = load_report(name="test_model")
+    assert report["best_name"] == result["best_name"]
+    assert report["n_train"] == result["n_train"]
+    assert set(report["all_metrics"]) == {"linear_baseline", "hist_gradient_boosting"}
+
+
+def test_load_report_returns_none_when_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(model_module, "MODELS_DIR", tmp_path)
+    assert load_report(name="does_not_exist") is None

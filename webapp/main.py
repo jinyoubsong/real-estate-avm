@@ -28,7 +28,49 @@ from avm.collectors.vworld_geocode import geocode_address
 from avm.config import load_settings
 from avm.db import PROPERTY_TYPE_LABELS, PROPERTY_TYPES, get_engine, init_db
 from avm.features import PROPERTY_TYPE_COLUMNS
-from avm.model import load_model, predict_one
+from avm.model import load_model, load_report, predict_one
+
+FEATURE_LABELS = {
+    "area_m2": "전용/건물면적",
+    "floor": "층",
+    "age": "연식(건축 후 경과연수)",
+    "lat": "위치(좌표)",
+    "lng": "위치(좌표)",
+    "base_rate": "기준금리",
+    "deal_year": "거래(추정) 시점",
+    "deal_month": "거래(추정) 시점",
+}
+MODEL_LABELS = {
+    "hist_gradient_boosting": "그래디언트부스팅(HistGradientBoosting)",
+    "linear_baseline": "선형회귀(베이스라인)",
+}
+
+
+def _feature_label(column: str) -> str:
+    return "부동산 유형" if column in PROPERTY_TYPE_COLUMNS else FEATURE_LABELS.get(column, column)
+
+
+def _dedup_labels(columns: list[str]) -> list[str]:
+    seen: list[str] = []
+    for c in columns:
+        label = _feature_label(c)
+        if label not in seen:
+            seen.append(label)
+    return seen
+
+
+def build_estimation_basis(report: dict | None) -> dict | None:
+    """학습 리포트를 바탕으로 '산출근거' 요약을 만든다. 리포트가 없으면 None."""
+    if report is None:
+        return None
+    best_name = report["best_name"]
+    return {
+        "model_label": MODEL_LABELS.get(best_name, best_name),
+        "n_samples": report["n_train"] + report["n_test"],
+        "mape_pct": round(report["all_metrics"][best_name]["mape"] * 100, 1),
+        "used_features": _dedup_labels(report["feature_columns"]),
+        "dropped_features": _dedup_labels(report["dropped_columns"]),
+    }
 
 
 @asynccontextmanager
@@ -264,6 +306,9 @@ async def estimate(
 
         price = predict_one(model_bundle, features)
         comparables = find_nearby_trades(engine, lat, lng)
+        basis = build_estimation_basis(load_report())
+    else:
+        basis = None
 
     return templates.TemplateResponse(
         request=request,
@@ -281,5 +326,6 @@ async def estimate(
             "build_year": build_year,
             "auto_filled": auto_filled,
             "auto_note": auto_note,
+            "basis": basis,
         },
     )

@@ -24,6 +24,18 @@
     padding: 2px 8px; border-radius: 10px; margin-left: 6px;
   }
   .auto-note { font-size: 12px; color: #a06a1d; margin-top: 4px; }
+  .basis-box {
+    background: #fafafa; border: 1px solid #e5e5e5; border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 20px; font-size: 13px; color: #444;
+  }
+  .basis-box h3 { font-size: 13px; margin: 0 0 8px; color: #222; }
+  .basis-box ul { margin: 4px 0 0; padding-left: 18px; }
+  .basis-box li { margin-bottom: 2px; }
+  .basis-box .tag-list span {
+    display: inline-block; background: #eef1f8; color: #33415c; font-size: 12px;
+    padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0;
+  }
+  .basis-box .tag-list span.dropped { background: #f5f5f5; color: #999; text-decoration: line-through; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
   th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
   th { color: #666; font-weight: normal; }
@@ -45,6 +57,21 @@
     {% if auto_note %}<div class="auto-note">{{ auto_note }}</div>{% endif %}
     <div class="disclaimer">모델은 학습에 쓰인 실거래 데이터 범위 안에서만 신뢰할 수 있습니다. 참고용 추정치이며 공식 감정평가를 대체하지 않습니다.</div>
   </div>
+
+  {% if basis %}
+  <div class="basis-box">
+    <h3>산출근거</h3>
+    <ul>
+      <li>학습 데이터: 실거래 {{ "{:,}".format(basis.n_samples) }}건</li>
+      <li>사용 모델: {{ basis.model_label }}</li>
+      <li>모델 참고 정확도: 테스트 데이터 기준 평균 오차율(MAPE) 약 {{ basis.mape_pct }}%</li>
+    </ul>
+    <div class="tag-list" style="margin-top:8px;">
+      {% for f in basis.used_features %}<span>{{ f }}</span>{% endfor %}
+      {% for f in basis.dropped_features %}<span class="dropped" title="데이터가 아직 없어 이번 모델에서는 제외됨">{{ f }}</span>{% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <h2>인근 실거래 비교 사례 ({{ comparables|length }}건, 반경 3km 이내 가까운 순)</h2>
   {% if comparables %}

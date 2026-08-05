@@ -97,6 +97,14 @@ def load_model(name: str = "avm_model") -> dict:
     return joblib.load(MODELS_DIR / f"{name}.joblib")
 
 
+def load_report(name: str = "avm_model") -> dict | None:
+    """학습 시 저장된 리포트(모델 종류/정확도/학습건수 등)를 읽는다. 없으면 None."""
+    report_path = MODELS_DIR / f"{name}_report.json"
+    if not report_path.exists():
+        return None
+    return json.loads(report_path.read_text(encoding="utf-8"))
+
+
 def predict_one(bundle: dict, features: dict) -> float:
     columns = bundle["feature_columns"]
     row = pd.DataFrame([{col: features.get(col) for col in columns}])
