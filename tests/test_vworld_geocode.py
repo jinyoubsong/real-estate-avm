@@ -89,7 +89,68 @@ def test_collect_geocodes_skips_already_cached(db_engine, monkeypatch):
     assert saved == 0
 
 
+@responses.activate
+def test_collect_geocodes_skips_masked_jibun(db_engine, monkeypatch):
+    """지번이 '*'로 마스킹된 주소는 좌표를 구할 수 없으니 조회 자체를 건너뛴다."""
+    monkeypatch.setenv("VWORLD_API_KEY", "dummy-key")
+    _seed_trade(db_engine, "서울특별시 종로구 가회동 *")
+    responses.add(responses.GET, ENDPOINT, json=json.loads(read_fixture("vworld_geocode_ok.json")), status=200)
+
+    saved = collect_geocodes(engine=db_engine)
+
+    assert saved == 0
+    assert len(responses.calls) == 0
+    with get_session(db_engine) as db:
+        assert db.query(GeoCache).count() == 0
+
+
 def test_collect_geocodes_requires_api_key(db_engine, monkeypatch):
     monkeypatch.delenv("VWORLD_API_KEY", raising=False)
     with pytest.raises(MissingApiKeyError):
         collect_geocodes(engine=db_engine)
+
+
+def _seed_trades(engine, addresses: list[str]):
+    with get_session(engine) as db:
+        for i, address in enumerate(addresses):
+            db.add(
+                Trade(
+                    property_type="apt",
+                    region_code="11110",
+                    deal_date=date(2024, 1, 15),
+                    building_name="테스트아파트",
+                    jibun=str(i),
+                    area_m2=84.93,
+                    floor=10,
+                    build_year=2001,
+                    price_krw=2_500_000_000 + i,
+                    address=address,
+                )
+            )
+        db.commit()
+
+
+def test_collect_geocodes_commits_progress_incrementally(db_engine, monkeypatch):
+    """네트워크 오류로 중간에 실패해도, 그 전까지 처리한 건은 커밋되어 남아 있어야 한다."""
+    import avm.collectors.vworld_geocode as vg
+
+    monkeypatch.setenv("VWORLD_API_KEY", "dummy-key")
+    addresses = sorted(f"주소{i}" for i in range(5))
+    _seed_trades(db_engine, addresses)
+
+    call_count = {"n": 0}
+
+    def fake_geocode(address, api_key, session=None):
+        call_count["n"] += 1
+        if call_count["n"] == 4:
+            raise RuntimeError("네트워크 오류 시뮬레이션")
+        return (37.5, 127.0)
+
+    monkeypatch.setattr(vg, "geocode_address", fake_geocode)
+
+    with pytest.raises(RuntimeError):
+        vg.collect_geocodes(engine=db_engine, commit_every=2)
+
+    with get_session(db_engine) as db:
+        # commit_every=2: 처음 2건 처리 후 커밋됐으므로 실패해도 최소 2건은 남아야 한다
+        assert db.query(GeoCache).count() >= 2

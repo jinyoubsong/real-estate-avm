@@ -75,8 +75,15 @@ def geocode_address_detailed(address: str, api_key: str, session=None) -> dict |
     return parse_geocode_response_detailed(_request_geocode(address, api_key, session=session))
 
 
-def collect_geocodes(engine=None) -> int:
-    """trades 테이블에 있는 주소 중 geocache에 없는 것들을 지오코딩해 저장한다."""
+def collect_geocodes(engine=None, commit_every: int = 20) -> int:
+    """trades 테이블에 있는 주소 중 geocache에 없는 것들을 지오코딩해 저장한다.
+
+    네트워크 오류 등으로 중간에 실패해도 이미 처리한 만큼은 남도록
+    `commit_every`건마다 커밋한다 (재실행하면 남은 주소부터 이어서 처리됨).
+    지번이 "*"로 마스킹된 주소(단독/다가구 등 개인정보 보호로 일부 데이터에서
+    발생)는 애초에 정확한 좌표를 구할 수 없고 VWorld 서버가 이런 입력에
+    연결을 끊어버리는 경우가 있어 요청 자체를 건너뛴다.
+    """
     settings = load_settings()
     if not settings.vworld_api_key:
         raise MissingApiKeyError("브이월드(VWORLD_API_KEY)")
@@ -94,15 +101,16 @@ def collect_geocodes(engine=None) -> int:
         cached = {
             row[0] for row in db.execute(select(GeoCache.address)).all()
         }
-        todo = sorted(addresses - cached)
+        todo = sorted(a for a in (addresses - cached) if "*" not in a)
 
-        for address in todo:
+        for i, address in enumerate(todo, start=1):
             coord = geocode_address(address, settings.vworld_api_key, session=session)
-            if coord is None:
-                continue
-            lat, lng = coord
-            db.add(GeoCache(address=address, lat=lat, lng=lng, updated_at=datetime.now(timezone.utc)))
-            saved += 1
+            if coord is not None:
+                lat, lng = coord
+                db.add(GeoCache(address=address, lat=lat, lng=lng, updated_at=datetime.now(timezone.utc)))
+                saved += 1
+            if i % commit_every == 0:
+                db.commit()
         db.commit()
 
     return saved
