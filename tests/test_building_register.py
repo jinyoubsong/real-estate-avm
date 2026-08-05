@@ -9,17 +9,21 @@ from avm.collectors.building_register import (
     TITLE_ENDPOINT,
     Pnu,
     _approval_year,
-    _floor_number,
+    _normalize_unit_token,
     lookup_building_spec,
-    parse_expos_xml,
+    parse_expos_json,
     parse_pnu,
-    parse_title_xml,
+    parse_title_json,
 )
 from avm.collectors.vworld_geocode import ENDPOINT as VWORLD_ENDPOINT
 from conftest import read_fixture
 
 # tests/fixtures/vworld_geocode_ok.json 의 level4LC: "1111017500101230004"
 SAMPLE_PNU = "1111017500101230004"
+
+
+def _json_fixture(name: str) -> dict:
+    return json.loads(read_fixture(name))
 
 
 def test_parse_pnu_general_lot():
@@ -38,34 +42,12 @@ def test_parse_pnu_too_short_raises():
         parse_pnu("123")
 
 
-def test_parse_title_xml():
-    info = parse_title_xml(read_fixture("building_title_sample.xml"))
-    assert info == {
-        "total_floor_area": 15234.56,
-        "plat_area": 3200.5,
-        "approval_date": "20090630",
-        "main_purpose": "공동주택",
-        "ground_floors": 25,
-    }
-
-
-def test_parse_expos_xml():
-    units = parse_expos_xml(read_fixture("building_expos_sample.xml"))
-    assert len(units) == 2
-    assert units[0] == {
-        "dong_name": "104동",
-        "ho_name": "1301호",
-        "exclusive_area": 84.9478,
-        "floor_name": "제13층",
-    }
-
-
 @pytest.mark.parametrize(
-    "floor_name,expected",
-    [("제13층", 13), ("제3층", 3), ("지하1층", -1), ("", 0), ("옥탑1층", 1)],
+    "value,expected",
+    [("104동", "104"), ("1301호", "1301"), ("102", "102"), (" 104동 ", "104")],
 )
-def test_floor_number(floor_name, expected):
-    assert _floor_number(floor_name) == expected
+def test_normalize_unit_token(value, expected):
+    assert _normalize_unit_token(value) == expected
 
 
 @pytest.mark.parametrize(
@@ -74,6 +56,38 @@ def test_floor_number(floor_name, expected):
 )
 def test_approval_year(approval_date, expected):
     assert _approval_year(approval_date) == expected
+
+
+def test_parse_title_json_returns_one_row_per_dong():
+    titles = parse_title_json(_json_fixture("building_title_sample.json"))
+    assert len(titles) == 2
+    assert titles[0]["dong_name"] == "103동"
+    assert titles[0]["total_floor_area"] == 1645.0801
+    assert titles[0]["approval_date"] == "20090320"
+    assert titles[0]["main_purpose"] == "공동주택"
+    assert titles[0]["ground_floors"] == 10
+    assert titles[1]["dong_name"] == "104동"
+    assert titles[1]["ground_floors"] == 13
+
+
+def test_parse_expos_json_includes_gb_code():
+    units = parse_expos_json(_json_fixture("building_expos_sample.json"))
+    assert len(units) == 3
+    exclusive = [u for u in units if u["expos_gb"] == "1"]
+    assert len(exclusive) == 2
+    assert exclusive[0] == {
+        "dong_name": "104동",
+        "ho_name": "102",
+        "exclusive_area": 59.9426,
+        "floor": 1,
+        "floor_name": "1층",
+        "expos_gb": "1",
+    }
+
+
+def test_parse_expos_json_handles_empty_items_string():
+    units = parse_expos_json(_json_fixture("building_expos_empty.json"))
+    assert units == []
 
 
 def _mock_vworld_ok():
@@ -86,33 +100,48 @@ def _mock_vworld_ok():
 
 
 @responses.activate
-def test_lookup_building_spec_with_dong_ho(monkeypatch):
+def test_lookup_building_spec_with_dong_ho_filters_exclusive_only(monkeypatch):
     monkeypatch.setenv("VWORLD_API_KEY", "dummy")
     monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
     _mock_vworld_ok()
-    responses.add(responses.GET, TITLE_ENDPOINT, body=read_fixture("building_title_sample.xml"), status=200)
-    responses.add(responses.GET, EXPOS_ENDPOINT, body=read_fixture("building_expos_sample.xml"), status=200)
+    responses.add(responses.GET, TITLE_ENDPOINT, json=_json_fixture("building_title_sample.json"), status=200)
+    responses.add(responses.GET, EXPOS_ENDPOINT, json=_json_fixture("building_expos_sample.json"), status=200)
 
-    result = lookup_building_spec("서울특별시 종로구 종로동 123-4", dong_name="104동", ho_name="1301호")
+    result = lookup_building_spec("서울특별시 종로구 종로동 123-4", dong_name="104동", ho_name="102")
 
     assert result["warning"] is None
-    assert result["area_m2"] == 84.9478
-    assert result["floor"] == 13
-    assert result["build_year"] == 2009
+    assert result["area_m2"] == 59.9426  # 전유(1)만, 공용(18.3818)은 제외
+    assert result["floor"] == 1
+    assert result["build_year"] == 2009  # 104동 표제부 사용승인일 기준
     assert result["lat"] == pytest.approx(37.5665)
 
 
 @responses.activate
-def test_lookup_building_spec_without_dong_ho_uses_title_totals(monkeypatch):
+def test_lookup_building_spec_accepts_ho_suffix_variants(monkeypatch):
+    """사용자가 '1301호'처럼 접미사를 붙여 입력해도 API의 '1301'과 매칭돼야 한다."""
     monkeypatch.setenv("VWORLD_API_KEY", "dummy")
     monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
     _mock_vworld_ok()
-    responses.add(responses.GET, TITLE_ENDPOINT, body=read_fixture("building_title_sample.xml"), status=200)
+    responses.add(responses.GET, TITLE_ENDPOINT, json=_json_fixture("building_title_sample.json"), status=200)
+    responses.add(responses.GET, EXPOS_ENDPOINT, json=_json_fixture("building_expos_sample.json"), status=200)
+
+    result = lookup_building_spec("서울특별시 종로구 종로동 123-4", dong_name="104동", ho_name="1301호")
+
+    assert result["area_m2"] == 84.9478
+    assert result["floor"] == 13
+
+
+@responses.activate
+def test_lookup_building_spec_without_dong_ho_uses_first_title_row(monkeypatch):
+    monkeypatch.setenv("VWORLD_API_KEY", "dummy")
+    monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
+    _mock_vworld_ok()
+    responses.add(responses.GET, TITLE_ENDPOINT, json=_json_fixture("building_title_sample.json"), status=200)
 
     result = lookup_building_spec("서울특별시 종로구 종로동 123-4")
 
-    assert result["area_m2"] == 15234.56
-    assert result["floor"] == 25
+    assert result["area_m2"] == 1645.0801
+    assert result["floor"] == 10
     assert result["build_year"] == 2009
 
 
@@ -121,10 +150,10 @@ def test_lookup_building_spec_unmatched_unit_sets_warning(monkeypatch):
     monkeypatch.setenv("VWORLD_API_KEY", "dummy")
     monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
     _mock_vworld_ok()
-    responses.add(responses.GET, TITLE_ENDPOINT, body=read_fixture("building_title_sample.xml"), status=200)
-    responses.add(responses.GET, EXPOS_ENDPOINT, body=read_fixture("building_expos_sample.xml"), status=200)
+    responses.add(responses.GET, TITLE_ENDPOINT, json=_json_fixture("building_title_sample.json"), status=200)
+    responses.add(responses.GET, EXPOS_ENDPOINT, json=_json_fixture("building_expos_sample.json"), status=200)
 
-    result = lookup_building_spec("서울특별시 종로구 종로동 123-4", dong_name="999동", ho_name="9999호")
+    result = lookup_building_spec("서울특별시 종로구 종로동 123-4", dong_name="999동", ho_name="9999")
 
     assert result["area_m2"] is None
     assert "찾지 못해" in result["warning"]

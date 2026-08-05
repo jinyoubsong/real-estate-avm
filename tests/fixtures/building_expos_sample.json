@@ -1,0 +1,39 @@
+{
+  "header": { "resultCode": "00", "resultMsg": "NORMAL SERVICE" },
+  "body": {
+    "items": {
+      "item": [
+        {
+          "dongNm": "104동",
+          "hoNm": "102",
+          "flrGbCdNm": "지상",
+          "flrNo": 1,
+          "flrNoNm": "1층",
+          "exposPubuseGbCd": "1",
+          "exposPubuseGbCdNm": "전유",
+          "area": 59.9426
+        },
+        {
+          "dongNm": "104동",
+          "hoNm": "102",
+          "flrGbCdNm": "각층",
+          "flrNo": 0,
+          "flrNoNm": "각층",
+          "exposPubuseGbCd": "2",
+          "exposPubuseGbCdNm": "공용",
+          "area": 18.3818
+        },
+        {
+          "dongNm": "104동",
+          "hoNm": "1301",
+          "flrGbCdNm": "지상",
+          "flrNo": 13,
+          "flrNoNm": "13층",
+          "exposPubuseGbCd": "1",
+          "exposPubuseGbCdNm": "전유",
+          "area": 84.9478
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "header": { "resultCode": "00", "resultMsg": "NORMAL SERVICE" },
+  "body": {
+    "items": {
+      "item": [
+        {
+          "sigunguCd": "11110",
+          "bjdongCd": "17500",
+          "platGbCd": "0",
+          "bun": "0766",
+          "ji": "0000",
+          "bldNm": "종로청계힐스테이트",
+          "dongNm": "103동",
+          "platArea": 0,
+          "totArea": 1645.0801,
+          "mainPurpsCdNm": "공동주택",
+          "grndFlrCnt": 10,
+          "ugrndFlrCnt": 0,
+          "useAprDay": "20090320"
+        },
+        {
+          "sigunguCd": "11110",
+          "bjdongCd": "17500",
+          "platGbCd": "0",
+          "bun": "0766",
+          "ji": "0000",
+          "bldNm": "종로청계힐스테이트",
+          "dongNm": "104동",
+          "platArea": 0,
+          "totArea": 1720.55,
+          "mainPurpsCdNm": "공동주택",
+          "grndFlrCnt": 13,
+          "ugrndFlrCnt": 0,
+          "useAprDay": "20090320"
+        }
+      ]
+    }
+  }
+}
