@@ -119,3 +119,93 @@ def test_estimate_success_shows_price_and_comparables(tmp_path, monkeypatch):
     assert "좌표를 찾지 못했습니다" not in resp.text
     assert "원" in resp.text
     assert "종로청계힐스테이트" in resp.text  # 인근 비교 사례에 표시
+
+
+def test_estimate_with_manual_specs_skips_building_register_lookup(tmp_path, monkeypatch):
+    """면적/건축년도를 모두 입력하면 건축물대장 자동조회를 시도하지 않아야 한다."""
+    import webapp.main as webapp_main
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("lookup_building_spec은 호출되면 안 됩니다")
+
+    client = _make_client(tmp_path, monkeypatch, with_model=True, with_data=True)
+    monkeypatch.setattr(webapp_main, "lookup_building_spec", _boom)
+
+    resp = client.post(
+        "/estimate",
+        data={
+            "property_type": "apt",
+            "region_name": "서울특별시 종로구",
+            "dong": "숭인동",
+            "jibun": "766",
+            "area_m2": "84.93",
+            "floor": "10",
+            "build_year": "2009",
+        },
+    )
+    assert resp.status_code == 200
+    assert "원" in resp.text
+
+
+def test_estimate_auto_lookup_fills_missing_specs(tmp_path, monkeypatch):
+    import webapp.main as webapp_main
+
+    client = _make_client(tmp_path, monkeypatch, with_model=True, with_data=True)
+    monkeypatch.setattr(
+        webapp_main,
+        "lookup_building_spec",
+        lambda address, dong_name="", ho_name="": {
+            "area_m2": 84.9478,
+            "floor": 13,
+            "build_year": 2009,
+            "lat": 37.5759,
+            "lng": 127.0212,
+            "warning": None,
+        },
+    )
+
+    resp = client.post(
+        "/estimate",
+        data={
+            "property_type": "apt",
+            "region_name": "서울특별시 종로구",
+            "dong": "숭인동",
+            "jibun": "766",
+            "building_dong": "104동",
+            "ho": "1301호",
+        },
+    )
+    assert resp.status_code == 200
+    assert "원" in resp.text
+    assert "자동조회" in resp.text
+    assert "84.9478" in resp.text
+
+
+def test_estimate_auto_lookup_partial_failure_shows_error(tmp_path, monkeypatch):
+    import webapp.main as webapp_main
+
+    client = _make_client(tmp_path, monkeypatch, with_model=True, with_data=True)
+    monkeypatch.setattr(
+        webapp_main,
+        "lookup_building_spec",
+        lambda address, dong_name="", ho_name="": {
+            "area_m2": None,
+            "floor": None,
+            "build_year": None,
+            "lat": 37.5759,
+            "lng": 127.0212,
+            "warning": "동/호에 해당하는 전유부 정보를 찾지 못해 면적/층은 직접 입력해 주세요.",
+        },
+    )
+
+    resp = client.post(
+        "/estimate",
+        data={
+            "property_type": "apt",
+            "region_name": "서울특별시 종로구",
+            "dong": "숭인동",
+            "jibun": "766",
+        },
+    )
+    assert resp.status_code == 200
+    assert "직접 입력해 주세요" in resp.text

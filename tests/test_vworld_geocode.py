@@ -5,7 +5,12 @@ import pytest
 import responses
 
 from avm.collectors.base import MissingApiKeyError
-from avm.collectors.vworld_geocode import ENDPOINT, collect_geocodes, parse_geocode_response
+from avm.collectors.vworld_geocode import (
+    ENDPOINT,
+    collect_geocodes,
+    parse_geocode_response,
+    parse_geocode_response_detailed,
+)
 from avm.db import GeoCache, Trade, get_session
 from conftest import read_fixture
 
@@ -19,6 +24,21 @@ def test_parse_geocode_response_ok():
 def test_parse_geocode_response_not_found():
     data = json.loads(read_fixture("vworld_geocode_not_found.json"))
     assert parse_geocode_response(data) is None
+
+
+def test_parse_geocode_response_detailed_includes_pnu():
+    data = json.loads(read_fixture("vworld_geocode_ok.json"))
+    detailed = parse_geocode_response_detailed(data)
+    assert detailed == {
+        "lat": 37.5665,
+        "lng": 126.978,
+        "pnu": "1111017500101230004",
+    }
+
+
+def test_parse_geocode_response_detailed_not_found():
+    data = json.loads(read_fixture("vworld_geocode_not_found.json"))
+    assert parse_geocode_response_detailed(data) is None
 
 
 def _seed_trade(engine, address: str):

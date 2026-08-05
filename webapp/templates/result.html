@@ -19,6 +19,11 @@
   .price-box .amount { font-size: 28px; font-weight: bold; color: #1a1a2e; }
   .price-box .meta { font-size: 13px; color: #555; margin-top: 6px; }
   .disclaimer { font-size: 12px; color: #999; margin-top: 8px; }
+  .auto-badge {
+    display: inline-block; background: #e6f4ea; color: #256029; font-size: 11px;
+    padding: 2px 8px; border-radius: 10px; margin-left: 6px;
+  }
+  .auto-note { font-size: 12px; color: #a06a1d; margin-top: 4px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
   th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
   th { color: #666; font-weight: normal; }
@@ -32,11 +37,12 @@
   <div class="error-box">{{ error }}</div>
 {% else %}
   <div class="price-box">
-    <div class="amount">{{ "{:,.0f}".format(price) }} 원</div>
+    <div class="amount">{{ "{:,.0f}".format(price) }} 원{% if auto_filled %}<span class="auto-badge">건축물대장 자동조회 반영</span>{% endif %}</div>
     <div class="meta">
       {{ property_type_label }} · {{ address }} · 전용/건물면적 {{ area_m2 }}㎡ · {{ floor }}층 · {{ build_year }}년 준공
       {% if lat and lng %} · 좌표 {{ "%.5f"|format(lat) }}, {{ "%.5f"|format(lng) }}{% endif %}
     </div>
+    {% if auto_note %}<div class="auto-note">{{ auto_note }}</div>{% endif %}
     <div class="disclaimer">모델은 학습에 쓰인 실거래 데이터 범위 안에서만 신뢰할 수 있습니다. 참고용 추정치이며 공식 감정평가를 대체하지 않습니다.</div>
   </div>
 

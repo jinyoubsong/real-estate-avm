@@ -26,7 +26,26 @@ def parse_geocode_response(data: dict) -> tuple[float, float] | None:
     return float(point["y"]), float(point["x"])  # (lat, lng)
 
 
-def geocode_address(address: str, api_key: str, session=None) -> tuple[float, float] | None:
+def parse_geocode_response_detailed(data: dict) -> dict | None:
+    """좌표뿐 아니라 structure.level4LC(법정동+지번 PNU 유사 코드)까지 뽑는다.
+
+    건축물대장 조회에 필요한 시군구코드/법정동코드/지번을 얻기 위해 쓰인다.
+    """
+    response = data.get("response", {})
+    if response.get("status") != "OK":
+        return None
+    point = response.get("result", {}).get("point", {})
+    if "x" not in point or "y" not in point:
+        return None
+    structure = response.get("refined", {}).get("structure", {})
+    return {
+        "lat": float(point["y"]),
+        "lng": float(point["x"]),
+        "pnu": structure.get("level4LC") or None,
+    }
+
+
+def _request_geocode(address: str, api_key: str, session=None):
     session = session or build_session()
     resp = session.get(
         ENDPOINT,
@@ -45,7 +64,15 @@ def geocode_address(address: str, api_key: str, session=None) -> tuple[float, fl
         timeout=15,
     )
     resp.raise_for_status()
-    return parse_geocode_response(resp.json())
+    return resp.json()
+
+
+def geocode_address(address: str, api_key: str, session=None) -> tuple[float, float] | None:
+    return parse_geocode_response(_request_geocode(address, api_key, session=session))
+
+
+def geocode_address_detailed(address: str, api_key: str, session=None) -> dict | None:
+    return parse_geocode_response_detailed(_request_geocode(address, api_key, session=session))
 
 
 def collect_geocodes(engine=None) -> int:

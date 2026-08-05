@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+    <header>
+        <resultCode>00</resultCode>
+        <resultMsg>NORMAL SERVICE.</resultMsg>
+    </header>
+    <body>
+        <items>
+            <item>
+                <totArea>15234.56</totArea>
+                <platArea>3200.5</platArea>
+                <useAprDay>20090630</useAprDay>
+                <mainPurpsCdNm>공동주택</mainPurpsCdNm>
+                <grndFlrCnt>25</grndFlrCnt>
+            </item>
+        </items>
+        <numOfRows>10</numOfRows>
+        <pageNo>1</pageNo>
+        <totalCount>1</totalCount>
+    </body>
+</response>

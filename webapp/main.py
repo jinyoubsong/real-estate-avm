@@ -15,6 +15,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 
+from avm.collectors.base import MissingApiKeyError, sanitize_error
+from avm.collectors.building_register import lookup_building_spec
 from avm.collectors.vworld_geocode import geocode_address
 from avm.config import load_settings
 from avm.db import PROPERTY_TYPE_LABELS, PROPERTY_TYPES, get_engine, init_db
@@ -107,9 +109,11 @@ async def estimate(
     region_name: str = Form(""),
     dong: str = Form(""),
     jibun: str = Form(""),
-    area_m2: float = Form(...),
-    floor: int = Form(0),
-    build_year: int = Form(...),
+    building_dong: str = Form(""),
+    ho: str = Form(""),
+    area_m2: float | None = Form(None),
+    floor: int | None = Form(None),
+    build_year: int | None = Form(None),
 ):
     address = " ".join(part for part in [region_name.strip(), dong.strip(), jibun.strip()] if part).strip()
     engine = get_engine()
@@ -118,15 +122,45 @@ async def estimate(
     lat = lng = None
     price = None
     comparables: list[dict] = []
+    auto_note = None
+    auto_filled = False
 
     if not address:
         error = "지역명/동/지번 중 최소 하나 이상을 입력해 주소를 구성해 주세요."
+    elif area_m2 is None or build_year is None:
+        # 면적/건축년도 중 하나라도 비어 있으면 건축물대장 자동조회를 시도한다.
+        settings = load_settings()
+        if not settings.data_go_kr_api_key:
+            error = "면적/건축년도를 비워두면 건축물대장에서 자동조회하는데, 공공데이터포털 키가 없어 불가능합니다. 값을 직접 입력해 주세요."
+        else:
+            try:
+                spec = lookup_building_spec(address, dong_name=building_dong.strip(), ho_name=ho.strip())
+            except MissingApiKeyError as exc:
+                spec = None
+                error = str(exc)
+            if spec is not None:
+                lat, lng = spec["lat"], spec["lng"]
+                auto_note = spec["warning"]
+                if lat is None:
+                    error = auto_note or "주소 좌표를 찾지 못했습니다."
+                else:
+                    if area_m2 is None and spec["area_m2"] is not None:
+                        area_m2 = spec["area_m2"]
+                        auto_filled = True
+                    if floor is None and spec["floor"] is not None:
+                        floor = spec["floor"]
+                        auto_filled = True
+                    if build_year is None and spec["build_year"] is not None:
+                        build_year = spec["build_year"]
+                        auto_filled = True
+                    if area_m2 is None or build_year is None:
+                        error = (auto_note + " " if auto_note else "") + "면적/건축년도를 자동으로 채우지 못했습니다. 직접 입력해 주세요."
     else:
         try:
             coord = resolve_coordinates(engine, address)
         except Exception as exc:  # noqa: BLE001 - 사용자에게 원인을 그대로 보여주기 위함
             coord = None
-            error = f"좌표 조회 중 오류가 발생했습니다: {exc}"
+            error = f"좌표 조회 중 오류가 발생했습니다: {sanitize_error(exc)}"
         if coord is None and error is None:
             error = "입력한 주소의 좌표를 찾지 못했습니다. 주소를 더 구체적으로 입력해보세요."
         elif coord is not None:
@@ -171,5 +205,7 @@ async def estimate(
             "area_m2": area_m2,
             "floor": floor,
             "build_year": build_year,
+            "auto_filled": auto_filled,
+            "auto_note": auto_note,
         },
     )

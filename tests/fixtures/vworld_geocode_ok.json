@@ -3,7 +3,15 @@
     "service": {"name": "address"},
     "status": "OK",
     "input": {"type": "PARCEL", "address": "서울특별시 종로구 종로동 123-4"},
-    "refined": {"text": "서울특별시 종로구 종로동 123-4"},
+    "refined": {
+      "text": "서울특별시 종로구 종로동 123-4",
+      "structure": {
+        "level0": "대한민국", "level1": "서울특별시", "level2": "종로구", "level3": "",
+        "level4L": "종로동", "level4LC": "1111017500101230004",
+        "level4A": "종로1234동", "level4AC": "1111071000",
+        "level5": "123-4", "detail": ""
+      }
+    },
     "result": {
       "point": {"x": "126.978000", "y": "37.566500"}
     }

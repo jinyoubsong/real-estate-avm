@@ -1,6 +1,15 @@
+import re
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+_API_KEY_PARAM_RE = re.compile(r"(?:serviceKey|key)=[^&\s]+")
+
+
+def sanitize_error(exc: Exception) -> str:
+    """예외 메시지에 URL 쿼리로 섞여 나올 수 있는 API 키를 가려서 반환한다."""
+    return _API_KEY_PARAM_RE.sub("key=***", str(exc))
 
 
 def build_session() -> requests.Session:

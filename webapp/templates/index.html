@@ -26,7 +26,7 @@
 </head>
 <body>
 <h1>부동산 가격산정 추계</h1>
-<p class="sub">위치와 기본 스펙을 입력하면 학습된 모델로 추정가를 계산합니다. (지번주소는 VWorld로 자동 좌표 조회)</p>
+<p class="sub">위치를 입력하면 학습된 모델로 추정가를 계산합니다. (지번주소는 VWorld로 자동 좌표 조회)</p>
 
 <form action="/estimate" method="post">
   <div>
@@ -44,7 +44,7 @@
       <input id="region_name" name="region_name" type="text" placeholder="서울특별시 종로구" />
     </div>
     <div>
-      <label for="dong">동</label>
+      <label for="dong">법정동</label>
       <input id="dong" name="dong" type="text" placeholder="숭인동" />
     </div>
     <div>
@@ -56,18 +56,31 @@
 
   <div class="row">
     <div>
-      <label for="area_m2">전용/건물면적(㎡)</label>
-      <input id="area_m2" name="area_m2" type="number" step="0.01" required placeholder="84.93" />
+      <label for="building_dong">건물동 <span style="font-weight:normal;color:#999;">(선택)</span></label>
+      <input id="building_dong" name="building_dong" type="text" placeholder="104동" />
     </div>
     <div>
-      <label for="floor">층</label>
+      <label for="ho">호수 <span style="font-weight:normal;color:#999;">(선택)</span></label>
+      <input id="ho" name="ho" type="text" placeholder="1301호" />
+    </div>
+  </div>
+  <p class="hint">건물동/호수를 알면 건축물대장에서 면적·층을 더 정확히 자동조회합니다 (아파트/오피스텔 등 집합건물).</p>
+
+  <div class="row">
+    <div>
+      <label for="area_m2">전용/건물면적(㎡) <span style="font-weight:normal;color:#999;">(비우면 자동조회)</span></label>
+      <input id="area_m2" name="area_m2" type="number" step="0.01" placeholder="비워두면 건축물대장에서 조회" />
+    </div>
+    <div>
+      <label for="floor">층 <span style="font-weight:normal;color:#999;">(선택)</span></label>
       <input id="floor" name="floor" type="number" placeholder="10" />
     </div>
     <div>
-      <label for="build_year">건축년도</label>
-      <input id="build_year" name="build_year" type="number" required placeholder="2010" />
+      <label for="build_year">건축년도 <span style="font-weight:normal;color:#999;">(비우면 자동조회)</span></label>
+      <input id="build_year" name="build_year" type="number" placeholder="비워두면 건축물대장에서 조회" />
     </div>
   </div>
+  <p class="hint">면적/건축년도를 비워두면 입력한 위치로 건축물대장을 자동조회합니다 (공공데이터포털 키 필요, 아직 활용신청 승인 전이면 직접 입력해 주세요).</p>
 
   <button type="submit">추정가 계산</button>
 </form>
