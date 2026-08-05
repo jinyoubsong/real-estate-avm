@@ -24,7 +24,7 @@ copy .env.example .env
 | 브이월드 지오코더 | [vworld.kr](https://www.vworld.kr) | 회원가입 → 오픈API 인증키 신청 |
 | 한국은행 ECOS | [ecos.bok.or.kr](https://ecos.bok.or.kr) | 회원가입 → OpenAPI 인증키 신청 |
 
-위 4개(아파트 제외) API는 이 프로젝트에서 아직 **실제 승인 키로 검증되지 않았습니다** — 승인 후 실제 응답이 문서 기반 추정 스키마와 다르면 해당 부분만 고치면 됩니다.
+연립다세대/단독다가구/오피스텔은 실제 승인 키로 검증 완료. 건축물대장정보 서비스는 아직 미검증(활용신청 승인 대기 또는 진행 중) — 승인 후 실제 응답이 문서 기반 추정 스키마와 다르면 `avm/collectors/building_register.py`만 고치면 됩니다.
 
 키는 `.env`의 `DATA_GO_KR_API_KEY`, `VWORLD_API_KEY`, `ECOS_API_KEY`에 넣습니다.
 
@@ -45,8 +45,8 @@ python -m avm.cli predict --input sample_input.json
 # 실거래가 수집: --type으로 부동산 유형 선택 (기본값 apt)
 #   apt=아파트, rh=연립다세대, sh=단독/다가구, offi=오피스텔
 # 지역코드는 법정동코드 앞 5자리 (예: 서울 종로구 11110)
-# --region-name은 선택사항 (생략하면 API 응답의 시군구명을 자동 사용)
-python -m avm.cli collect trades --type apt --region 11110 --start 202401 --end 202412
+# --region-name은 강력 권장 (아래 "주소 정확도" 참고)
+python -m avm.cli collect trades --type apt --region 11110 --region-name "서울특별시 종로구" --start 202401 --end 202412
 
 # 주소 -> 좌표 지오코딩
 python -m avm.cli collect geocode
@@ -62,9 +62,12 @@ python -m avm.cli predict --input sample_input.json
 
 `collect trades`는 여러 월/유형에 걸쳐 실행해도 이미 저장된 거래는 건너뜁니다(자연키 기준 중복 방지).
 
-**주의**: `rh`(연립다세대)/`sh`(단독·다가구)/`offi`(오피스텔)는 data.go.kr에서 **아파트와 별도로 활용신청**해야 하고,
-필드 스키마는 아직 실제 승인된 키로 검증되지 않은 추정치입니다(`avm/collectors/molit_generic.py`의 `TYPE_CONFIGS` 참고).
-승인 후 실제 응답이 다르면 해당 설정만 고치면 된다.
+**주소 정확도**: 실거래가 API의 `estateAgentSggNm`(공인중개사 사무소 소재지)은 매물 소재지와 다를 수 있어
+(예: 종로구 매물을 서초구 소재 중개업소가 중개하는 경우) 주소 접두어로 쓰지 않습니다.
+`--region-name`을 생략하면 동/지번만으로 주소가 구성되어 지오코딩 정확도가 떨어질 수 있으니 항상 넘겨주세요.
+
+**참고**: `rh`(연립다세대)/`sh`(단독·다가구)/`offi`(오피스텔)는 data.go.kr에서 **아파트와 별도로 활용신청**해야 합니다.
+필드 스키마(`avm/collectors/molit_generic.py`의 `TYPE_CONFIGS`)는 실제 승인된 키로 검증 완료했습니다.
 
 ## 5. 지도로 보기
 
@@ -117,7 +120,7 @@ uvicorn webapp.main:app --reload --port 8000
 pytest
 ```
 
-수집기(collectors)의 파싱 로직은 `tests/fixtures`의 API 응답 스키마 샘플로 검증하므로, API 키 없이도 전체 테스트가 통과합니다(단, rh/sh/offi·건축물대장 픽스처는 아직 미검증 추정 스키마).
+수집기(collectors)의 파싱 로직은 `tests/fixtures`의 API 응답 스키마 샘플로 검증하므로, API 키 없이도 전체 테스트가 통과합니다(건축물대장 픽스처만 아직 미검증 추정 스키마).
 
 ## 9. 다음 확장 아이디어
 

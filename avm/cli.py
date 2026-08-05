@@ -15,6 +15,8 @@ from .model import load_model, predict_one, save_model, train
 
 
 def cmd_collect_trades(args: argparse.Namespace) -> None:
+    if not args.region_name:
+        print("경고: --region-name 없이 수집하면 주소에 시군구명이 빠져 지오코딩 정확도가 떨어질 수 있습니다.")
     saved = collect_trades(
         property_type=args.type,
         region_code=args.region,
@@ -87,7 +89,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_trades.add_argument(
         "--region-name",
         default="",
-        help="주소 조합용 시도/시군구명 (예: '서울특별시 종로구'). 생략 시 API 응답의 estateAgentSggNm을 사용",
+        help=(
+            "주소 조합용 시도/시군구명 (예: '서울특별시 종로구'). 강력 권장 — "
+            "생략하면 동/지번만으로 주소를 구성해 지오코딩 정확도가 떨어질 수 있음 "
+            "(API의 estateAgentSggNm은 중개업소 소재지라 매물 소재지와 다를 수 있어 쓰지 않음)"
+        ),
     )
     p_trades.add_argument("--start", required=True, help="시작 계약월 YYYYMM")
     p_trades.add_argument("--end", required=True, help="종료 계약월 YYYYMM")

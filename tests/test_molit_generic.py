@@ -31,7 +31,8 @@ def test_parse_trades_xml_rh_config():
     assert first["deal_date"] == date(2024, 3, 5)
     assert first["area_m2"] == 45.2
     assert first["price_krw"] == 35_000 * 10_000
-    assert first["address"] == "서울 종로구 창신동 12-3"
+    # region_name을 안 주면 동/지번만으로 주소를 구성한다 (estateAgentSggNm에 의존하지 않음)
+    assert first["address"] == "창신동 12-3"
 
 
 def test_parse_trades_xml_unknown_field_defaults_gracefully():

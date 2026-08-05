@@ -68,6 +68,12 @@ def _text(item: ElementTree.Element, tag: str, default: str = "") -> str:
 
 
 def parse_trades_xml(xml_text: str, config: MolitTypeConfig, region_name: str = "") -> list[dict]:
+    """region_name을 반드시 넘겨주는 것을 권장한다.
+
+    응답의 estateAgentSggNm(공인중개사 사무소 소재지)은 매물 소재지와 다를 수 있어
+    (예: 종로구 매물을 서초구 소재 중개업소가 중개) 주소 접두어로 쓰지 않는다.
+    직거래(dealingGbn=직거래)는 이 필드가 아예 비어 있기도 하다.
+    """
     root = ElementTree.fromstring(xml_text)
 
     header_code = root.findtext("./header/resultCode")
@@ -85,8 +91,7 @@ def parse_trades_xml(xml_text: str, config: MolitTypeConfig, region_name: str = 
         day = int(_text(item, "dealDay"))
         dong = _text(item, "umdNm")
         jibun = _text(item, "jibun")
-        sgg_name = region_name or _text(item, "estateAgentSggNm")
-        address = " ".join(part for part in [sgg_name, dong, jibun] if part).strip()
+        address = " ".join(part for part in [region_name, dong, jibun] if part).strip()
 
         trades.append(
             {

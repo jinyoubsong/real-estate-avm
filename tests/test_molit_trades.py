@@ -24,11 +24,12 @@ def test_parse_trades_xml_basic():
     assert first["price_krw"] == 101_300 * 10_000
     assert first["region_code"] == "11110"
     assert first["jibun"] == "766"
-    # estateAgentSggNm(응답에 포함된 시군구명)을 기본 주소 접두어로 사용
-    assert first["address"] == "서울 종로구 숭인동 766"
+    # region_name을 안 주면 estateAgentSggNm(중개업소 소재지, 매물 소재지와 다를 수 있음)에
+    # 의존하지 않고 동/지번만으로 주소를 구성한다
+    assert first["address"] == "숭인동 766"
 
 
-def test_parse_trades_xml_region_name_overrides_response_sgg():
+def test_parse_trades_xml_with_region_name():
     xml_text = read_fixture("molit_trades_sample.xml")
     trades = parse_trades_xml(xml_text, region_name="서울특별시 종로구")
     assert trades[0]["address"] == "서울특별시 종로구 숭인동 766"
