@@ -171,7 +171,8 @@ def test_lookup_building_spec_accepts_ho_suffix_variants(monkeypatch):
 
 
 @responses.activate
-def test_lookup_building_spec_without_dong_ho_uses_first_title_row(monkeypatch):
+def test_lookup_building_spec_without_dong_ho_asks_for_unit_on_multi_unit_building(monkeypatch):
+    """동 이름이 있는 집합건물(아파트 등)은 동/호 없이 건물 전체 연면적을 세대 면적으로 쓰면 안 된다."""
     monkeypatch.setenv("VWORLD_API_KEY", "dummy")
     monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
     _mock_vworld_ok()
@@ -179,9 +180,28 @@ def test_lookup_building_spec_without_dong_ho_uses_first_title_row(monkeypatch):
 
     result = lookup_building_spec("서울특별시 종로구 종로동 123-4")
 
-    assert result["area_m2"] == 1645.0801
-    assert result["floor"] == 10
-    assert result["build_year"] == 2009
+    assert result["area_m2"] is None
+    assert result["floor"] is None
+    assert result["build_year"] == 2009  # 건축년도는 표제부 값을 그대로 씀
+    assert "동/호" in result["warning"]
+
+
+@responses.activate
+def test_lookup_building_spec_without_dong_ho_uses_title_totals_for_single_building(monkeypatch):
+    """동 이름이 없는 단독/다가구 등은 표제부의 건물 전체 연면적/지상층수를 참고치로 쓴다."""
+    monkeypatch.setenv("VWORLD_API_KEY", "dummy")
+    monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
+    _mock_vworld_ok()
+    responses.add(
+        responses.GET, TITLE_ENDPOINT, json=_json_fixture("building_title_single_sample.json"), status=200
+    )
+
+    result = lookup_building_spec("서울특별시 종로구 종로동 123-4")
+
+    assert result["area_m2"] == 319.89
+    assert result["floor"] == 2
+    assert result["build_year"] == 2004
+    assert result["warning"] is None
 
 
 @responses.activate

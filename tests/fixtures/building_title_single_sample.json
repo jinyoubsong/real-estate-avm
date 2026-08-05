@@ -1,0 +1,24 @@
+{
+  "header": { "resultCode": "00", "resultMsg": "NORMAL SERVICE" },
+  "body": {
+    "items": {
+      "item": [
+        {
+          "sigunguCd": "11110",
+          "bjdongCd": "10000",
+          "platGbCd": "0",
+          "bun": "0002",
+          "ji": "0000",
+          "bldNm": "",
+          "dongNm": "",
+          "platArea": 200.0,
+          "totArea": 319.89,
+          "mainPurpsCdNm": "단독주택",
+          "grndFlrCnt": 2,
+          "ugrndFlrCnt": 0,
+          "useAprDay": "20040815"
+        }
+      ]
+    }
+  }
+}

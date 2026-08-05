@@ -193,8 +193,11 @@ def lookup_building_spec(address: str, dong_name: str = "", ho_name: str = "") -
 
     반환: {"area_m2", "floor", "build_year", "lat", "lng", "warning"}
     일부만 조회 가능하면 나머지는 None으로 채우고 warning에 이유를 남긴다.
-    (동/호가 없으면 표제부의 건물(동) 연면적/지상층수를 참고치로 사용한다 —
-    단독/다가구처럼 호실 구분이 없는 유형에 적합하고, 집합건물은 부정확할 수 있다.)
+
+    동/호가 없을 때: 표제부에 동(棟) 이름이 있는 집합건물(아파트/오피스텔 등)은
+    "건물 전체 총 연면적"이 개별 세대 전용면적과 전혀 다르므로 area_m2를 채우지
+    않고 동/호 선택을 요청한다. 동 이름이 없는 단독/다가구 등은 표제부의
+    건물 전체 연면적/지상층수를 참고치로 사용한다.
     """
     settings = load_settings()
     if not settings.vworld_api_key:
@@ -249,7 +252,14 @@ def lookup_building_spec(address: str, dong_name: str = "", ho_name: str = "") -
         else:
             result["warning"] = "동/호에 해당하는 전유부 정보를 찾지 못해 면적/층은 직접 입력해 주세요."
     elif title:
-        result["area_m2"] = title["total_floor_area"] or None
-        result["floor"] = title["ground_floors"] or None
+        is_multi_unit = any(t["dong_name"] for t in titles)
+        if is_multi_unit:
+            result["warning"] = (
+                "집합건물(아파트/오피스텔 등)입니다. 건물동/호수를 선택해야 개별 세대의 "
+                "전용면적을 정확히 알 수 있어요 — 면적/층은 직접 입력하거나 동/호를 선택해 주세요."
+            )
+        else:
+            result["area_m2"] = title["total_floor_area"] or None
+            result["floor"] = title["ground_floors"] or None
 
     return result
