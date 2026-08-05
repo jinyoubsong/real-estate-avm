@@ -14,6 +14,8 @@ from avm.collectors.building_register import (
     parse_expos_json,
     parse_pnu,
     parse_title_json,
+    resolve_pnu,
+    suggest_property_type,
 )
 from avm.collectors.vworld_geocode import ENDPOINT as VWORLD_ENDPOINT
 from conftest import read_fixture
@@ -56,6 +58,43 @@ def test_normalize_unit_token(value, expected):
 )
 def test_approval_year(approval_date, expected):
     assert _approval_year(approval_date) == expected
+
+
+@pytest.mark.parametrize(
+    "main_purpose,etc_purpose,expected",
+    [
+        ("공동주택", "아파트", "apt"),
+        ("업무시설", "오피스텔", "offi"),
+        ("공동주택", "다세대주택", "rh"),
+        ("단독주택", "다가구주택", "sh"),
+        ("공동주택", "", None),
+        ("", "", None),
+    ],
+)
+def test_suggest_property_type(main_purpose, etc_purpose, expected):
+    assert suggest_property_type(main_purpose, etc_purpose) == expected
+
+
+@responses.activate
+def test_resolve_pnu_success():
+    _mock_vworld_ok()
+    lookup = resolve_pnu("서울특별시 종로구 종로동 123-4", "dummy")
+    assert lookup.pnu == Pnu(sigungu_cd="11110", bjdong_cd="17500", plat_gb_cd="0", bun="0123", ji="0004")
+    assert lookup.lat == pytest.approx(37.5665)
+    assert lookup.warning is None
+
+
+@responses.activate
+def test_resolve_pnu_not_found():
+    responses.add(
+        responses.GET,
+        VWORLD_ENDPOINT,
+        json=json.loads(read_fixture("vworld_geocode_not_found.json")),
+        status=200,
+    )
+    lookup = resolve_pnu("존재하지않는주소 0-0", "dummy")
+    assert lookup.pnu is None
+    assert "찾지 못했습니다" in lookup.warning
 
 
 def test_parse_title_json_returns_one_row_per_dong():

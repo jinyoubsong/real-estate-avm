@@ -75,10 +75,29 @@ def parse_title_json(data: dict) -> list[dict]:
             "plat_area": float(item.get("platArea") or 0),
             "approval_date": item.get("useAprDay") or "",
             "main_purpose": item.get("mainPurpsCdNm") or "",
+            "etc_purpose": item.get("etcPurps") or "",
             "ground_floors": int(item.get("grndFlrCnt") or 0),
         }
         for item in _items(data)
     ]
+
+
+def suggest_property_type(main_purpose: str, etc_purpose: str = "") -> str | None:
+    """건물 주용도 텍스트로 부동산 유형(apt/rh/sh/offi)을 추정한다.
+
+    예: mainPurpsCdNm="공동주택", etcPurps="아파트" -> "apt".
+    확신할 수 없으면 None을 반환한다(호출 측에서 사용자의 기존 선택을 유지해야 함).
+    """
+    text = f"{main_purpose} {etc_purpose}"
+    if "아파트" in text:
+        return "apt"
+    if "오피스텔" in text:
+        return "offi"
+    if "다세대" in text or "연립" in text:
+        return "rh"
+    if "다가구" in text or "단독" in text:
+        return "sh"
+    return None
 
 
 def parse_expos_json(data: dict) -> list[dict]:
@@ -147,6 +166,28 @@ def _approval_year(approval_date: str) -> int:
     return int(approval_date[:4]) if len(approval_date) >= 4 and approval_date[:4].isdigit() else 0
 
 
+@dataclass(frozen=True)
+class AddressLookup:
+    pnu: Pnu | None
+    lat: float | None
+    lng: float | None
+    warning: str | None
+
+
+def resolve_pnu(address: str, vworld_api_key: str) -> AddressLookup:
+    """주소를 지오코딩해 건축물대장 조회에 필요한 PNU(시군구/법정동/지번)를 구한다."""
+    geo = geocode_address_detailed(address, vworld_api_key)
+    if geo is None:
+        return AddressLookup(None, None, None, "주소 좌표/코드를 찾지 못했습니다.")
+    if not geo.get("pnu"):
+        return AddressLookup(None, geo["lat"], geo["lng"], "지번 코드를 확인하지 못해 건축물대장을 조회할 수 없습니다.")
+    try:
+        pnu = parse_pnu(geo["pnu"])
+    except ValueError:
+        return AddressLookup(None, geo["lat"], geo["lng"], "지번 코드 형식을 해석하지 못했습니다.")
+    return AddressLookup(pnu, geo["lat"], geo["lng"], None)
+
+
 def lookup_building_spec(address: str, dong_name: str = "", ho_name: str = "") -> dict:
     """주소(+선택적 건물동/호)로 면적/층/건축년도를 자동 조회한다.
 
@@ -163,23 +204,13 @@ def lookup_building_spec(address: str, dong_name: str = "", ho_name: str = "") -
 
     result = {"area_m2": None, "floor": None, "build_year": None, "lat": None, "lng": None, "warning": None}
 
-    geo = geocode_address_detailed(address, settings.vworld_api_key)
-    if geo is None:
-        result["warning"] = "주소 좌표/코드를 찾지 못했습니다."
+    lookup = resolve_pnu(address, settings.vworld_api_key)
+    result["lat"] = lookup.lat
+    result["lng"] = lookup.lng
+    if lookup.pnu is None:
+        result["warning"] = lookup.warning
         return result
-
-    result["lat"] = geo["lat"]
-    result["lng"] = geo["lng"]
-
-    if not geo.get("pnu"):
-        result["warning"] = "지번 코드를 확인하지 못해 건축물대장을 조회할 수 없습니다."
-        return result
-
-    try:
-        pnu = parse_pnu(geo["pnu"])
-    except ValueError:
-        result["warning"] = "지번 코드 형식을 해석하지 못했습니다."
-        return result
+    pnu = lookup.pnu
 
     norm_dong = _normalize_unit_token(dong_name) if dong_name else ""
     norm_ho = _normalize_unit_token(ho_name) if ho_name else ""

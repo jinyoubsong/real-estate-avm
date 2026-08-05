@@ -11,12 +11,19 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 
 from avm.collectors.base import MissingApiKeyError, sanitize_error
-from avm.collectors.building_register import lookup_building_spec
+from avm.collectors.building_register import (
+    EXPOS_GB_EXCLUSIVE,
+    fetch_expos_info,
+    fetch_title_info,
+    lookup_building_spec,
+    resolve_pnu,
+    suggest_property_type,
+)
 from avm.collectors.vworld_geocode import geocode_address
 from avm.config import load_settings
 from avm.db import PROPERTY_TYPE_LABELS, PROPERTY_TYPES, get_engine, init_db
@@ -91,6 +98,73 @@ def resolve_coordinates(engine, address: str) -> tuple[float, float] | None:
     if not settings.vworld_api_key:
         return None
     return geocode_address(address, settings.vworld_api_key)
+
+
+def _build_address(region_name: str, dong: str, jibun: str) -> str:
+    return " ".join(part for part in [region_name.strip(), dong.strip(), jibun.strip()] if part).strip()
+
+
+@app.get("/api/buildings")
+async def api_buildings(region_name: str = "", dong: str = "", jibun: str = ""):
+    """지번 주소로 건축물대장 표제부를 조회해 건물동 목록(+용도 추정)을 돌려준다."""
+    address = _build_address(region_name, dong, jibun)
+    if not address:
+        return JSONResponse({"error": "주소를 입력해 주세요."}, status_code=400)
+
+    settings = load_settings()
+    if not settings.vworld_api_key or not settings.data_go_kr_api_key:
+        return JSONResponse({"error": "VWorld/공공데이터포털 API 키가 설정되지 않았습니다."}, status_code=400)
+
+    lookup = resolve_pnu(address, settings.vworld_api_key)
+    if lookup.pnu is None:
+        return JSONResponse({"error": lookup.warning or "주소를 찾지 못했습니다."}, status_code=404)
+
+    try:
+        titles = fetch_title_info(lookup.pnu, settings.data_go_kr_api_key)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"error": sanitize_error(exc)}, status_code=502)
+
+    buildings = [
+        {
+            "dong_name": t["dong_name"],
+            "main_purpose": t["etc_purpose"] or t["main_purpose"],
+            "suggested_type": suggest_property_type(t["main_purpose"], t["etc_purpose"]),
+        }
+        for t in titles
+        if t["dong_name"]
+    ]
+    return JSONResponse({"buildings": buildings})
+
+
+@app.get("/api/units")
+async def api_units(region_name: str = "", dong: str = "", jibun: str = "", building_dong: str = ""):
+    """선택한 건물동의 전유부(호실별 전용면적/층) 목록을 돌려준다."""
+    address = _build_address(region_name, dong, jibun)
+    if not address:
+        return JSONResponse({"error": "주소를 입력해 주세요."}, status_code=400)
+
+    settings = load_settings()
+    if not settings.vworld_api_key or not settings.data_go_kr_api_key:
+        return JSONResponse({"error": "VWorld/공공데이터포털 API 키가 설정되지 않았습니다."}, status_code=400)
+
+    lookup = resolve_pnu(address, settings.vworld_api_key)
+    if lookup.pnu is None:
+        return JSONResponse({"error": lookup.warning or "주소를 찾지 못했습니다."}, status_code=404)
+
+    try:
+        units = fetch_expos_info(lookup.pnu, settings.data_go_kr_api_key)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"error": sanitize_error(exc)}, status_code=502)
+
+    norm_target = building_dong.strip().rstrip("동") if building_dong else ""
+    result = [
+        {"ho_name": u["ho_name"], "area_m2": u["exclusive_area"], "floor": u["floor"]}
+        for u in units
+        if u["expos_gb"] == EXPOS_GB_EXCLUSIVE
+        and u["ho_name"]
+        and (not norm_target or u["dong_name"].rstrip("동") == norm_target)
+    ]
+    return JSONResponse({"units": result})
 
 
 @app.get("/", response_class=HTMLResponse)

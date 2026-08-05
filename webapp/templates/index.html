@@ -12,16 +12,26 @@
   label { font-size: 13px; font-weight: bold; display: block; margin-bottom: 4px; }
   input, select {
     width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 14px;
-    border: 1px solid #ccc; border-radius: 6px;
+    border: 1px solid #ccc; border-radius: 6px; background: white;
   }
-  .row { display: flex; gap: 10px; }
+  select:disabled { color: #999; background: #f5f5f5; }
+  .row { display: flex; gap: 10px; align-items: flex-end; }
   .row > div { flex: 1; }
   button {
-    margin-top: 8px; padding: 10px; font-size: 14px; font-weight: bold;
+    padding: 10px; font-size: 14px; font-weight: bold;
     background: #1a1a2e; color: white; border: none; border-radius: 6px; cursor: pointer;
   }
   button:hover { background: #0f0f1e; }
+  button.secondary {
+    background: white; color: #1a1a2e; border: 1px solid #1a1a2e; padding: 8px 14px;
+    white-space: nowrap; margin: 0;
+  }
+  button.secondary:hover { background: #f0f0f5; }
+  button:disabled { opacity: 0.5; cursor: default; }
   .hint { color: #888; font-size: 12px; margin-top: -8px; }
+  #lookup-status { font-size: 12px; margin-top: -8px; min-height: 14px; }
+  #lookup-status.error { color: #b3261e; }
+  #lookup-status.ok { color: #256029; }
 </style>
 </head>
 <body>
@@ -30,7 +40,7 @@
 
 <form action="/estimate" method="post">
   <div>
-    <label for="property_type">부동산 유형</label>
+    <label for="property_type">부동산 유형 <span id="type-suggested-badge" style="font-weight:normal;color:#256029;display:none;">(건물 용도로 자동 추천됨)</span></label>
     <select id="property_type" name="property_type">
       {% for t in property_types %}
       <option value="{{ t }}">{{ labels[t] }}</option>
@@ -52,19 +62,27 @@
       <input id="jibun" name="jibun" type="text" placeholder="766" />
     </div>
   </div>
-  <p class="hint">세 항목을 조합해 주소를 만들어 좌표를 조회합니다. 최소 한 항목은 입력해 주세요.</p>
+  <div class="row">
+    <p class="hint" style="flex:1;">세 항목을 조합해 주소를 만듭니다. 최소 한 항목은 입력해 주세요.</p>
+    <button type="button" id="lookup-btn" class="secondary">건물동/호수 조회</button>
+  </div>
+  <div id="lookup-status"></div>
 
   <div class="row">
     <div>
       <label for="building_dong">건물동 <span style="font-weight:normal;color:#999;">(선택)</span></label>
-      <input id="building_dong" name="building_dong" type="text" placeholder="104동" />
+      <select id="building_dong" name="building_dong" disabled>
+        <option value="">먼저 "건물동/호수 조회"를 눌러주세요</option>
+      </select>
     </div>
     <div>
       <label for="ho">호수 <span style="font-weight:normal;color:#999;">(선택)</span></label>
-      <input id="ho" name="ho" type="text" placeholder="1301호" />
+      <select id="ho" name="ho" disabled>
+        <option value="">건물동을 먼저 선택하세요</option>
+      </select>
     </div>
   </div>
-  <p class="hint">건물동/호수를 알면 건축물대장에서 면적·층을 더 정확히 자동조회합니다 (아파트/오피스텔 등 집합건물).</p>
+  <p class="hint">건물동/호수를 고르면 건축물대장에서 면적·층을 자동으로 채웁니다 (아파트/오피스텔 등 집합건물).</p>
 
   <div class="row">
     <div>
@@ -80,9 +98,108 @@
       <input id="build_year" name="build_year" type="number" placeholder="비워두면 건축물대장에서 조회" />
     </div>
   </div>
-  <p class="hint">면적/건축년도를 비워두면 입력한 위치로 건축물대장을 자동조회합니다 (공공데이터포털 키 필요, 아직 활용신청 승인 전이면 직접 입력해 주세요).</p>
+  <p class="hint">면적/건축년도를 비워두면 제출 시 위치로 건축물대장을 다시 자동조회합니다 (공공데이터포털 키 필요).</p>
 
   <button type="submit">추정가 계산</button>
 </form>
+
+<script>
+  const lookupBtn = document.getElementById('lookup-btn');
+  const statusEl = document.getElementById('lookup-status');
+  const buildingDongSelect = document.getElementById('building_dong');
+  const hoSelect = document.getElementById('ho');
+  const propertyTypeSelect = document.getElementById('property_type');
+  const suggestedBadge = document.getElementById('type-suggested-badge');
+
+  function addrParams() {
+    return new URLSearchParams({
+      region_name: document.getElementById('region_name').value,
+      dong: document.getElementById('dong').value,
+      jibun: document.getElementById('jibun').value,
+    });
+  }
+
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = kind || '';
+  }
+
+  function applySuggestedType(type) {
+    if (!type) return;
+    propertyTypeSelect.value = type;
+    suggestedBadge.style.display = 'inline';
+  }
+
+  function resetHoSelect(message) {
+    hoSelect.innerHTML = `<option value="">${message}</option>`;
+    hoSelect.disabled = true;
+  }
+
+  async function loadUnits(buildingDong) {
+    resetHoSelect('조회 중...');
+    const params = addrParams();
+    params.set('building_dong', buildingDong);
+    try {
+      const resp = await fetch(`/api/units?${params.toString()}`);
+      const data = await resp.json();
+      if (!resp.ok) {
+        resetHoSelect(data.error || '조회 실패');
+        return;
+      }
+      if (data.units.length === 0) {
+        resetHoSelect('호실 정보 없음 (직접 입력해 주세요)');
+        return;
+      }
+      hoSelect.innerHTML = '<option value="">선택 안 함</option>' + data.units
+        .map(u => `<option value="${u.ho_name}">${u.ho_name}호 (${u.area_m2}m², ${u.floor}층)</option>`)
+        .join('');
+      hoSelect.disabled = false;
+    } catch (e) {
+      resetHoSelect('조회 중 오류 발생');
+    }
+  }
+
+  lookupBtn.addEventListener('click', async () => {
+    setStatus('조회 중...', '');
+    suggestedBadge.style.display = 'none';
+    buildingDongSelect.disabled = true;
+    buildingDongSelect.innerHTML = '<option value="">조회 중...</option>';
+    resetHoSelect('건물동을 먼저 선택하세요');
+
+    try {
+      const resp = await fetch(`/api/buildings?${addrParams().toString()}`);
+      const data = await resp.json();
+      if (!resp.ok) {
+        setStatus(data.error || '조회 실패', 'error');
+        buildingDongSelect.innerHTML = '<option value="">조회 실패</option>';
+        return;
+      }
+      if (data.buildings.length === 0) {
+        setStatus('건물동 정보가 없습니다 (단독/다가구 등). 면적·건축년도를 비워두면 제출 시 건물 전체 정보로 자동조회합니다.', '');
+        buildingDongSelect.innerHTML = '<option value="">해당 없음</option>';
+        return;
+      }
+      buildingDongSelect.innerHTML = '<option value="">선택 안 함</option>' + data.buildings
+        .map(b => `<option value="${b.dong_name}" data-type="${b.suggested_type || ''}">${b.dong_name} (${b.main_purpose})</option>`)
+        .join('');
+      buildingDongSelect.disabled = false;
+      setStatus(`${data.buildings.length}개 동 확인됨`, 'ok');
+      applySuggestedType(data.buildings[0].suggested_type);
+    } catch (e) {
+      setStatus('조회 중 오류가 발생했습니다.', 'error');
+      buildingDongSelect.innerHTML = '<option value="">조회 실패</option>';
+    }
+  });
+
+  buildingDongSelect.addEventListener('change', (e) => {
+    const opt = e.target.selectedOptions[0];
+    if (!e.target.value) {
+      resetHoSelect('건물동을 먼저 선택하세요');
+      return;
+    }
+    if (opt && opt.dataset.type) applySuggestedType(opt.dataset.type);
+    loadUnits(e.target.value);
+  });
+</script>
 </body>
 </html>

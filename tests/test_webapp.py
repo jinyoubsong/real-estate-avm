@@ -209,3 +209,85 @@ def test_estimate_auto_lookup_partial_failure_shows_error(tmp_path, monkeypatch)
     )
     assert resp.status_code == 200
     assert "직접 입력해 주세요" in resp.text
+
+
+def test_api_buildings_missing_address_returns_400(tmp_path, monkeypatch):
+    client = _make_client(tmp_path, monkeypatch, with_model=False, with_data=False)
+    resp = client.get("/api/buildings")
+    assert resp.status_code == 400
+
+
+def test_api_buildings_success_returns_suggested_type(tmp_path, monkeypatch):
+    import webapp.main as webapp_main
+    from avm.collectors.building_register import AddressLookup, Pnu
+
+    client = _make_client(tmp_path, monkeypatch, with_model=False, with_data=False)
+    monkeypatch.setenv("VWORLD_API_KEY", "dummy")
+    monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
+    pnu = Pnu(sigungu_cd="11110", bjdong_cd="17500", plat_gb_cd="0", bun="0766", ji="0000")
+    monkeypatch.setattr(
+        webapp_main, "resolve_pnu", lambda address, key: AddressLookup(pnu, 37.5759, 127.0212, None)
+    )
+    monkeypatch.setattr(
+        webapp_main,
+        "fetch_title_info",
+        lambda pnu, key: [
+            {"dong_name": "104동", "main_purpose": "공동주택", "etc_purpose": "아파트", "ground_floors": 13},
+        ],
+    )
+
+    resp = client.get(
+        "/api/buildings",
+        params={"region_name": "서울특별시 종로구", "dong": "숭인동", "jibun": "766"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["buildings"] == [{"dong_name": "104동", "main_purpose": "아파트", "suggested_type": "apt"}]
+
+
+def test_api_buildings_address_not_found_returns_404(tmp_path, monkeypatch):
+    import webapp.main as webapp_main
+    from avm.collectors.building_register import AddressLookup
+
+    client = _make_client(tmp_path, monkeypatch, with_model=False, with_data=False)
+    monkeypatch.setenv("VWORLD_API_KEY", "dummy")
+    monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
+    monkeypatch.setattr(
+        webapp_main, "resolve_pnu", lambda address, key: AddressLookup(None, None, None, "주소 좌표/코드를 찾지 못했습니다.")
+    )
+
+    resp = client.get(
+        "/api/buildings",
+        params={"region_name": "존재하지않는시", "dong": "존재하지않는동", "jibun": "0-0"},
+    )
+    assert resp.status_code == 404
+
+
+def test_api_units_filters_exclusive_area_and_dong(tmp_path, monkeypatch):
+    import webapp.main as webapp_main
+    from avm.collectors.building_register import AddressLookup, Pnu
+
+    client = _make_client(tmp_path, monkeypatch, with_model=False, with_data=False)
+    monkeypatch.setenv("VWORLD_API_KEY", "dummy")
+    monkeypatch.setenv("DATA_GO_KR_API_KEY", "dummy")
+    pnu = Pnu(sigungu_cd="11110", bjdong_cd="17500", plat_gb_cd="0", bun="0766", ji="0000")
+    monkeypatch.setattr(
+        webapp_main, "resolve_pnu", lambda address, key: AddressLookup(pnu, 37.5759, 127.0212, None)
+    )
+    monkeypatch.setattr(
+        webapp_main,
+        "fetch_expos_info",
+        lambda pnu, key: [
+            {"dong_name": "104동", "ho_name": "102", "exclusive_area": 59.9426, "floor": 1, "expos_gb": "1"},
+            {"dong_name": "104동", "ho_name": "102", "exclusive_area": 18.38, "floor": 0, "expos_gb": "2"},
+            {"dong_name": "103동", "ho_name": "201", "exclusive_area": 84.9, "floor": 2, "expos_gb": "1"},
+        ],
+    )
+
+    resp = client.get(
+        "/api/units",
+        params={"region_name": "서울특별시 종로구", "dong": "숭인동", "jibun": "766", "building_dong": "104동"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["units"] == [{"ho_name": "102", "area_m2": 59.9426, "floor": 1}]
